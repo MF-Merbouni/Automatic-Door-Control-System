@@ -1,0 +1,107 @@
+PROGRAM ST_PRG
+VAR
+	//INPUTS
+	person_sens : BOOL;
+	safety_sens : BOOL;
+	door_open_sens : BOOL;
+	door_close_sens : BOOL;
+	open_PB : BOOL;
+	close_PB : BOOL;
+	mode_switch : BOOL;
+	stop_PB : BOOL;
+	
+	//OUTPUTS
+	door_motor_open : BOOL;
+	door_motor_close : BOOL;
+	auto_lamp : BOOL;
+	man_lamp : BOOL;
+	open_lamp : BOOL;
+	close_lamp : BOOL;
+	opr_lamp : BOOL;
+	alarm_lamp : BOOL;
+	
+	//TIMER
+	delay_open : TON;
+	elapsed_time : TIME;
+
+	
+END_VAR
+
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
+
+//stop
+IF stop_PB THEN 
+	door_motor_close := FALSE;
+	door_motor_open := FALSE;
+	alarm_lamp := TRUE;
+	opr_lamp := FALSE;
+	open_lamp := door_open_sens;
+	close_lamp := door_close_sens;
+ELSE  
+	alarm_lamp := FALSE;		
+END_IF
+
+
+//SELECT AUTO/MAN
+IF NOT mode_switch THEN 
+		door_motor_open := open_PB;
+		door_motor_close := close_PB;
+		opr_lamp := door_motor_open OR door_motor_close;
+		open_lamp := door_open_sens;
+		close_lamp := door_close_sens;
+		auto_lamp := FALSE;
+		man_lamp := TRUE;
+ELSE
+	man_lamp := FALSE;
+	auto_lamp := TRUE;
+END_IF	
+
+//interlock
+IF door_motor_open AND door_motor_close THEN
+	door_motor_close := FALSE;
+	door_motor_open := FALSE;
+END_IF
+
+
+// START DOOR OPEN / CLOSE CYCLE
+IF mode_switch AND person_sens THEN
+	door_motor_close := FALSE;	
+	door_motor_open := TRUE;
+    close_lamp := FALSE;
+	opr_lamp := TRUE;
+END_IF
+
+IF  door_open_sens AND mode_switch THEN
+	door_motor_open := FALSE;
+	delay_open(IN:=TRUE, PT:= T#5S);
+	opr_lamp := FALSE;
+	open_lamp := TRUE;
+ELSE
+	delay_open(IN := FALSE);
+END_IF
+
+IF delay_open.Q  THEN
+	door_motor_close := TRUE;
+	open_lamp := FALSE;
+	opr_lamp := TRUE;
+END_IF
+
+IF door_close_sens AND mode_switch THEN
+	door_motor_close := FALSE;
+	opr_lamp := FALSE;
+	close_lamp := TRUE;
+END_IF
+// END DOOR CYCLE
+
+
+
+// SAFETY CHECK
+IF  door_motor_close AND safety_sens THEN
+	door_motor_close := FALSE;
+	door_motor_open := TRUE;
+	opr_lamp := TRUE;
+END_IF
+ 
+
+
+
